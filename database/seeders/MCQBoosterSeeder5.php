@@ -5,13 +5,13 @@ namespace Database\Seeders;
 use App\Models\Quiz;
 use Illuminate\Database\Seeder;
 
-class QuizSeeder extends Seeder
+class MCQBoosterSeeder5 extends Seeder
 {
     public function run(): void
     {
         $quiz = Quiz::create([
-            'title' => 'MCQ Booster 1',
-            'description' => 'Information Technology, Computer Science, Networking, Security, Database, Web Technology and ICT MCQs.',
+            'title' => 'MCQ Booster 5',
+            'description' => 'Computer Fundamentals, Hardware, CPU Architecture, Memory, Storage, Motherboard and ICT in Nepal MCQs.',
         ]);
 
         $questions = [
@@ -1315,6 +1315,7 @@ class QuizSeeder extends Seeder
                 ],
             ],
         ];
+
 
         foreach ($questions as $questionData) {
             $question = $quiz->questions()->create([

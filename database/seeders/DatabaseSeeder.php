@@ -21,5 +21,24 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        $this->call([
+            QuizSeeder1::class,
+            QuizSeeder2::class,
+            QuizSeeder3::class,
+            QuizSeeder4::class,
+            QuizSeeder5::class,
+            QuizSeeder6::class,
+            QuizSeeder7::class,
+            QuizSeeder8::class,
+                // MCQBoosterSeeder1::class,
+                // MCQBoosterSeeder2::class,
+            MCQBoosterSeeder3::class,
+            MCQBoosterSeeder4::class,
+            MCQBoosterSeeder5::class,
+            MCQBoosterSeeder6::class,
+            MCQBoosterSeeder7::class,
+            MCQBoosterSeeder8::class,
+        ]);
     }
 }
