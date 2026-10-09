@@ -57,15 +57,13 @@ class QuizAttemptController extends Controller
         }
 
         /*
-         * Get the current question index.
-         *
-         * Example:
+         * Get current question index.
          *
          * 0 = first question
          * 1 = second question
          * 2 = third question
          */
-        $currentQuestionIndex = $request->session()->get(
+        $currentQuestionIndex = (int) $request->session()->get(
             "{$sessionKey}.current_question",
             0
         );
@@ -78,8 +76,17 @@ class QuizAttemptController extends Controller
         /*
          * Safety check.
          */
-        if ($currentQuestionIndex >= $questions->count()) {
-            $currentQuestionIndex = $questions->count() - 1;
+        if (
+            $currentQuestionIndex < 0 ||
+            $currentQuestionIndex >= $questions->count()
+        ) {
+            $currentQuestionIndex = max(
+                0,
+                min(
+                    $currentQuestionIndex,
+                    $questions->count() - 1
+                )
+            );
 
             $request->session()->put(
                 "{$sessionKey}.current_question",
@@ -88,7 +95,7 @@ class QuizAttemptController extends Controller
         }
 
         /*
-         * Get ONLY the current question.
+         * Get current question.
          */
         $question = $questions->get($currentQuestionIndex);
 
@@ -101,8 +108,7 @@ class QuizAttemptController extends Controller
         );
 
         /*
-         * Get the answer selected for this question,
-         * if there is one.
+         * Get selected answer for this question.
          */
         $selectedAnswer = $answers[$question->id] ?? null;
 
@@ -111,7 +117,6 @@ class QuizAttemptController extends Controller
             'question' => $question,
 
             // Human-friendly question number.
-            // Example: 1 instead of 0.
             'currentQuestion' => $currentQuestionIndex + 1,
 
             // Total number of questions.
@@ -123,7 +128,7 @@ class QuizAttemptController extends Controller
     }
 
     /**
-     * Store the answer for the current question.
+     * Store answer and handle Previous / Next / Submit.
      */
     public function store(
         Request $request,
@@ -150,20 +155,23 @@ class QuizAttemptController extends Controller
         /*
          * Get current question index.
          */
-        $currentQuestionIndex = $request->session()->get(
+        $currentQuestionIndex = (int) $request->session()->get(
             "{$sessionKey}.current_question",
             0
         );
 
         /*
-         * Get questions.
+         * Get all questions.
          */
         $questions = $quiz->questions->values();
 
         /*
          * Safety check.
          */
-        if ($currentQuestionIndex >= $questions->count()) {
+        if (
+            $currentQuestionIndex < 0 ||
+            $currentQuestionIndex >= $questions->count()
+        ) {
             return redirect()->route(
                 'quizzes.take',
                 $quiz
@@ -176,29 +184,18 @@ class QuizAttemptController extends Controller
         $question = $questions->get($currentQuestionIndex);
 
         /*
-         * Validate submitted answer.
+         * Get navigation action.
          *
-         * The answer must belong to the current question.
+         * Possible values:
+         *
+         * previous
+         * next
+         * submit
          */
-        $validated = Validator::make(
-            $request->all(),
-            [
-                'answer' => [
-                    'required',
-                    'integer',
-                    Rule::exists('answer_options', 'id')
-                        ->where(function ($query) use ($question) {
-                            $query->where(
-                                'question_id',
-                                $question->id
-                            );
-                        }),
-                ],
-            ]
-        )->validate();
+        $navigation = $request->input('navigation');
 
         /*
-         * Get answers already stored in the session.
+         * Get existing answers from session.
          */
         $answers = $request->session()->get(
             "{$sessionKey}.answers",
@@ -206,30 +203,77 @@ class QuizAttemptController extends Controller
         );
 
         /*
-         * Store current answer.
+         * ======================================================
+         * PREVIOUS
+         * ======================================================
+         *
+         * Previous does NOT require an answer.
          */
-        $answers[$question->id] = (int) $validated['answer'];
+        if ($navigation === 'previous') {
 
-        $request->session()->put(
-            "{$sessionKey}.answers",
-            $answers
-        );
+            /*
+             * If the user selected an answer,
+             * save it before going backward.
+             */
+            if ($request->filled('answer')) {
 
-        /*
-         * Move to the next question.
-         */
-        $nextQuestionIndex = $currentQuestionIndex + 1;
+                $validated = Validator::make(
+                    $request->all(),
+                    [
+                        'answer' => [
+                            'required',
+                            'integer',
 
-        /*
-         * If there are still questions remaining,
-         * show the next question.
-         */
-        if ($nextQuestionIndex < $questions->count()) {
-            $request->session()->put(
-                "{$sessionKey}.current_question",
-                $nextQuestionIndex
+                            /*
+                             * Make sure the answer belongs
+                             * to the current question.
+                             */
+                            Rule::exists(
+                                'answer_options',
+                                'id'
+                            )->where(
+                                    function ($query) use ($question) {
+                                        $query->where(
+                                            'question_id',
+                                            $question->id
+                                        );
+                                    }
+                                ),
+                        ],
+                    ]
+                )->validate();
+
+                /*
+                 * Save answer.
+                 */
+                $answers[$question->id] =
+                    (int) $validated['answer'];
+
+                $request->session()->put(
+                    "{$sessionKey}.answers",
+                    $answers
+                );
+            }
+
+            /*
+             * Move one question backward.
+             */
+            $previousQuestionIndex = max(
+                0,
+                $currentQuestionIndex - 1
             );
 
+            /*
+             * Update current question.
+             */
+            $request->session()->put(
+                "{$sessionKey}.current_question",
+                $previousQuestionIndex
+            );
+
+            /*
+             * Display previous question.
+             */
             return redirect()->route(
                 'quizzes.take',
                 $quiz
@@ -237,72 +281,201 @@ class QuizAttemptController extends Controller
         }
 
         /*
-         * ------------------------------------------------------
-         * Last question submitted.
-         * Calculate the final score.
-         * ------------------------------------------------------
+         * ======================================================
+         * NEXT / SUBMIT
+         * ======================================================
+         *
+         * Both Next and Submit require an answer.
          */
+        if (
+            $navigation === 'next' ||
+            $navigation === 'submit'
+        ) {
 
-        $score = 0;
+            /*
+             * Validate answer.
+             */
+            $validated = Validator::make(
+                $request->all(),
+                [
+                    'answer' => [
+                        'required',
+                        'integer',
 
-        foreach ($questions as $quizQuestion) {
-            $selectedOptionId =
-                $answers[$quizQuestion->id] ?? null;
+                        /*
+                         * Make sure the selected answer
+                         * belongs to the current question.
+                         */
+                        Rule::exists(
+                            'answer_options',
+                            'id'
+                        )->where(
+                                function ($query) use ($question) {
+                                    $query->where(
+                                        'question_id',
+                                        $question->id
+                                    );
+                                }
+                            ),
+                    ],
+                ],
+                [
+                    'answer.required' =>
+                        'Please select an answer before continuing.',
+                ]
+            )->validate();
 
-            if ($selectedOptionId === null) {
-                continue;
-            }
+            /*
+             * Save answer.
+             */
+            $answers[$question->id] =
+                (int) $validated['answer'];
 
-            $selectedOption = $quizQuestion->answerOptions
-                ->firstWhere(
-                    'id',
-                    $selectedOptionId
+            $request->session()->put(
+                "{$sessionKey}.answers",
+                $answers
+            );
+        }
+
+        /*
+         * ======================================================
+         * NEXT QUESTION
+         * ======================================================
+         */
+        if ($navigation === 'next') {
+
+            $nextQuestionIndex =
+                $currentQuestionIndex + 1;
+
+            /*
+             * Make sure we don't go beyond the last question.
+             */
+            if (
+                $nextQuestionIndex <
+                $questions->count()
+            ) {
+
+                $request->session()->put(
+                    "{$sessionKey}.current_question",
+                    $nextQuestionIndex
                 );
 
-            if (
-                $selectedOption &&
-                $selectedOption->is_correct
-            ) {
-                $score++;
+                return redirect()->route(
+                    'quizzes.take',
+                    $quiz
+                );
             }
         }
 
         /*
-         * Create the quiz attempt and answers
-         * inside one database transaction.
+         * ======================================================
+         * SUBMIT QUIZ
+         * ======================================================
          */
-        $attempt = DB::transaction(function () use ($quiz, $questions, $answers, $score) {
-            $attempt = $quiz->quizAttempts()->create([
-                'score' => $score,
-                'total_questions' => $questions->count(),
-            ]);
+        if ($navigation === 'submit') {
+
+            /*
+             * Get latest answers.
+             */
+            $answers = $request->session()->get(
+                "{$sessionKey}.answers",
+                []
+            );
+
+            /*
+             * Calculate score.
+             */
+            $score = 0;
 
             foreach ($questions as $quizQuestion) {
-                $attempt->answers()->create([
-                    'question_id' => $quizQuestion->id,
-                    'answer_option_id' =>
-                        $answers[$quizQuestion->id] ?? null,
-                ]);
+
+                $selectedOptionId =
+                    $answers[$quizQuestion->id] ?? null;
+
+                /*
+                 * Skip unanswered questions.
+                 */
+                if ($selectedOptionId === null) {
+                    continue;
+                }
+
+                /*
+                 * Find selected option.
+                 */
+                $selectedOption =
+                    $quizQuestion->answerOptions->firstWhere(
+                        'id',
+                        $selectedOptionId
+                    );
+
+                /*
+                 * Check if selected answer is correct.
+                 */
+                if (
+                    $selectedOption &&
+                    $selectedOption->is_correct
+                ) {
+                    $score++;
+                }
             }
 
-            return $attempt;
-        });
+            /*
+             * Create quiz attempt and answers
+             * inside one database transaction.
+             */
+            $attempt = DB::transaction(
+                function () use ($quiz, $questions, $answers, $score) {
+                    /*
+                     * Create quiz attempt.
+                     */
+                    $attempt = $quiz->quizAttempts()->create([
+                        'score' => $score,
+                        'total_questions' => $questions->count(),
+                    ]);
+
+                    /*
+                     * Store each question answer.
+                     */
+                    foreach ($questions as $quizQuestion) {
+
+                        $attempt->answers()->create([
+                            'question_id' =>
+                                $quizQuestion->id,
+
+                            'answer_option_id' =>
+                                $answers[$quizQuestion->id] ?? null,
+                        ]);
+                    }
+
+                    return $attempt;
+                }
+            );
+
+            /*
+             * Quiz is completed.
+             *
+             * Remove temporary session.
+             */
+            $request->session()->forget($sessionKey);
+
+            /*
+             * Redirect to result page.
+             */
+            return redirect()->route(
+                'quizzes.result',
+                [
+                    'quiz' => $quiz,
+                    'attempt' => $attempt,
+                ]
+            );
+        }
 
         /*
-         * Quiz is finished.
-         * Remove temporary session data.
-         */
-        $request->session()->forget($sessionKey);
-
-        /*
-         * Redirect to result page.
+         * Fallback.
          */
         return redirect()->route(
-            'quizzes.result',
-            [
-                'quiz' => $quiz,
-                'attempt' => $attempt,
-            ]
+            'quizzes.take',
+            $quiz
         );
     }
 

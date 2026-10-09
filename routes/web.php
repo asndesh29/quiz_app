@@ -8,32 +8,50 @@ Route::get('/', function () {
     return redirect()->route('quizzes.index');
 });
 
-Route::get('/quizzes', [QuizController::class, 'index'])
-    ->name('quizzes.index');
 
-Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])
-    ->name('quizzes.show');
+Route::get(
+    '/quizzes',
+    [QuizController::class, 'index']
+)->name('quizzes.index');
+
+
+Route::get(
+    '/quizzes/{quiz}',
+    [QuizController::class, 'show']
+)->name('quizzes.show');
+
 
 /*
 |--------------------------------------------------------------------------
 | Take Quiz
 |--------------------------------------------------------------------------
 */
-Route::get('/quizzes/{quiz}/take', [QuizAttemptController::class, 'show'])
-    ->name('quizzes.take');
+
+Route::get(
+    '/quizzes/{quiz}/take',
+    [QuizAttemptController::class, 'show']
+)->name('quizzes.take');
+
 
 /*
 |--------------------------------------------------------------------------
-| Submit Current Question
+| Next / Previous / Submit
 |--------------------------------------------------------------------------
 */
-Route::post('/quizzes/{quiz}/submit', [QuizAttemptController::class, 'store'])
-    ->name('quizzes.submit');
+
+Route::post(
+    '/quizzes/{quiz}/submit',
+    [QuizAttemptController::class, 'store']
+)->name('quizzes.submit');
+
 
 /*
 |--------------------------------------------------------------------------
 | Quiz Result
 |--------------------------------------------------------------------------
 */
-Route::get('/quizzes/{quiz}/result/{attempt}', [QuizAttemptController::class, 'result'])
-    ->name('quizzes.result');
+
+Route::get(
+    '/quizzes/{quiz}/result/{attempt}',
+    [QuizAttemptController::class, 'result']
+)->name('quizzes.result');
