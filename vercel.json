@@ -8,11 +8,22 @@
     },
     "routes": [
         {
-            "src": "/build/(.*)",
-            "dest": "/public/build/$1"
+            "src": "^/$",
+            "dest": "/api/index.php"
         },
         {
-            "src": "/(.*)",
+            "src": "^/index\\.php$",
+            "dest": "/api/index.php"
+        },
+        {
+            "src": "^/\\.htaccess$",
+            "dest": "/api/index.php"
+        },
+        {
+            "handle": "filesystem"
+        },
+        {
+            "src": "^/(.*)$",
             "dest": "/api/index.php"
         }
     ]
