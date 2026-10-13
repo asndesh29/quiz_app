@@ -39,6 +39,10 @@ class DatabaseSeeder extends Seeder
             MCQBoosterSeeder6::class,
             MCQBoosterSeeder7::class,
             MCQBoosterSeeder8::class,
+            MCQBoosterSeeder9::class,
+            McqBoosterSeeder10::class,
+            McqBoosterSeeder11::class,
+            McqBoosterSeeder12::class,
         ]);
     }
 }
