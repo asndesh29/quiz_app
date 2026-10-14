@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use App\Models\Quiz;
 use Illuminate\Database\Seeder;
 
-class McqBoosterSeeder10 extends Seeder
+class MCQBoosterSeeder10 extends Seeder
 {
     public function run(): void
     {
