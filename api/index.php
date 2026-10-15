@@ -8,18 +8,18 @@ header('Content-Type: application/json');
 
 try {
     $app->register(
-        \Illuminate\View\ViewServiceProvider::class
+        \Illuminate\Filesystem\FilesystemServiceProvider::class
     );
 
     echo json_encode([
-        'app_bootstrapped' => true,
+        'files_bound' => $app->bound('files'),
+        'files_resolves' => $app->make('files') !== null,
         'view_bound' => $app->bound('view'),
-        'view_resolves' => $app->make('view') !== null,
     ]);
 } catch (\Throwable $e) {
     error_log(
-        'View diagnostic: ' . get_class($e) .
-        ': ' . $e->getMessage()
+        'Container diagnostic: ' .
+        get_class($e) . ': ' . $e->getMessage()
     );
 
     http_response_code(500);
