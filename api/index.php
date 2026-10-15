@@ -11,15 +11,19 @@ try {
         \Illuminate\Filesystem\FilesystemServiceProvider::class
     );
 
+    $app->register(
+        \Illuminate\View\ViewServiceProvider::class
+    );
+
     echo json_encode([
         'files_bound' => $app->bound('files'),
-        'files_resolves' => $app->make('files') !== null,
         'view_bound' => $app->bound('view'),
+        'view_resolves' => $app->make('view') !== null,
     ]);
 } catch (\Throwable $e) {
     error_log(
-        'Container diagnostic: ' .
-        get_class($e) . ': ' . $e->getMessage()
+        'Provider test: ' . get_class($e) .
+        ': ' . $e->getMessage()
     );
 
     http_response_code(500);
@@ -29,7 +33,6 @@ try {
         'message' => $e->getMessage(),
     ]);
 }
-
 // header('Content-Type: application/json');
 
 // echo json_encode([
