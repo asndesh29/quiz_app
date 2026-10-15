@@ -1,19 +1,34 @@
 <?php
 
-$directories = [
-    '/tmp/storage/logs',
-    '/tmp/storage/framework/cache',
-    '/tmp/storage/framework/sessions',
-    '/tmp/storage/framework/views',
-];
+require __DIR__ . '/../vendor/autoload.php';
 
-foreach ($directories as $directory) {
-    if (!is_dir($directory)) {
-        mkdir($directory, 0775, true);
-    }
+$app = require __DIR__ . '/../bootstrap/app.php';
+
+header('Content-Type: application/json');
+
+try {
+    $app->register(
+        \Illuminate\View\ViewServiceProvider::class
+    );
+
+    echo json_encode([
+        'app_bootstrapped' => true,
+        'view_bound' => $app->bound('view'),
+        'view_resolves' => $app->make('view') !== null,
+    ]);
+} catch (\Throwable $e) {
+    error_log(
+        'View diagnostic: ' . get_class($e) .
+        ': ' . $e->getMessage()
+    );
+
+    http_response_code(500);
+
+    echo json_encode([
+        'error' => get_class($e),
+        'message' => $e->getMessage(),
+    ]);
 }
-
-require __DIR__ . '/../public/index.php';
 
 // header('Content-Type: application/json');
 
