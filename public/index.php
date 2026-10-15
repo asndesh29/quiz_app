@@ -29,6 +29,11 @@ try {
 } catch (\Throwable $e) {
     error_log('Laravel bootstrap failure: ' . $e);
 
+    error_log('Laravel startup error: ' . get_class($e));
+    error_log('Laravel startup message: ' . $e->getMessage());
+    error_log('Laravel startup file: ' . $e->getFile());
+    error_log('Laravel startup line: ' . $e->getLine());
+
     http_response_code(500);
 
     echo 'Application startup failed.';
